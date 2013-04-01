@@ -36,7 +36,12 @@ def vms_collectd_read():
         if vms.commands.get(d, 'gd.isghost')[0] == '1':
             continue
 
-        vms_domains.append(d)
+        # Skip if we can't get its "instance-00..." name
+        dom = hypervisor.domain_lookup(d)
+        if dom is None:
+            continue
+
+        vms_domains.append((d, dom.name()))
         count += 1
 
     vms_dispatch_one('totals.vm_count', 'absolute', count)
@@ -49,12 +54,12 @@ def vms_collectd_read():
         total = 0
 
         # For each domain, 
-        for d in vms_domains:
+        for d, name in vms_domains:
             # Get value and scale
             value = float(vms.commands.get(d, key)[0]) * scale
 
             # Dispatch
-            vms_dispatch_one('domains.' + str(d) + '.' + stat,
+            vms_dispatch_one('domains.' + name + '.' + stat,
                              type, value)
 
             # Add to total
